@@ -3,9 +3,104 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
+  background-color: cadetblue;
+  color: darkolivegreen;  
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+.app {
+  min-height: 100px;
+}
+
+/* navigation */
+.navbar {
+  background-color: cadetblue;
+  padding: 3px 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0,2);
+}
+.nav-list {
+  display: flex;
+  list-style: none;
+  gap: 2rem;
+}
+
+.nav-link {
+  color: white;
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+}
+.nav-link:hover {
+  background-color: aquamarine;
+}
+
+.nav-link.active {
+  background-color: aqua;
+}
+
+/* main */
+.main-content {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.page-title {
+  color:darkcyan;
+  margin-bottom: 2rem;
+  text-align: center;
+
+}
+
+/*stream-list*/
+.stream-list {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.add-form {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.add-input {
+  flex: 1;
+  padding: 1rem;
+  border: 2px solid bisque;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.add-button {
+  padding: 1rem 1.5rem;
+  background-color: lightseagreen;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.add-button:hover {
+  background-color: aquamarine;
+}
+
+.stream-items {
+  list-style: none;
+}
+
+.stream-item {
+  padding: 1rem;
+  background-color: whitesmoke;
+  margin-bottom: 1rem;
+  border-radius: 4px;
+  border-left: 4px solid lightseagreen;
+}
+
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
