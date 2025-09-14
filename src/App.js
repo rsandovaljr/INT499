@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 
 //placeholder
@@ -26,56 +26,330 @@ function AboutPage() {
   );
 }
 
-//steam list
+//stream list
 function StreamList() {
-  const [streams, setStreams] = useState([]);
-  const [newStream, setNewStream] = useState('');
+    const [ lists, setLists] = useState([]);
+    const [newListTitle, setNewListTitle] = useState("");
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const fileInputRef = useRef(null);
 
-  const addStream = () => {
-    if (newStream.trim()) {
-      setStreams([...streams, newStream.trim()]);
-      setNewStream('');
+//load local storage
+  useEffect(() => {
+    const saved = localStorage.getItem("streamLists");
+    if (saved) {
+      try {
+        setLists(JSON.parse(saved));
+      } catch (error) {
+        console.error("Error loading from localStorage:", error);
+      
+      }
+    }
+  }, []);
+  useEffect(() => {
+        return () => {
+            if (hasUnsavedChanges) {
+                localStorage.setItem("streamLists", JSON.stringify(lists));
+            }
+        };
+    }, [hasUnsavedChanges, lists]);
+
+//save local storage
+    const handleManualSave = () => {
+        try {
+            localStorage.setItem("streamLists", JSON.stringify(lists));
+            setHasUnsavedChanges(false);
+            alert("Lists saved to browser storage successfully!");
+        } catch (error) {
+            console.error("Error saving to localStorage:", error);
+            alert("Error saving data. Please try again.");
+        }
+    };
+
+    // Export lists to JSON file
+    const handleExport = () => {
+        try {
+            const dataStr = JSON.stringify(lists, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `stream-lists-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            alert("Lists exported successfully!");
+        } catch (error) {
+            console.error("Error exporting lists:", error);
+            alert("Error exporting data. Please try again.");
+        }
+    };
+
+    // Import lists from JSON file
+    const handleImport = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const importedData = JSON.parse(e.target.result);
+                
+                if (!Array.isArray(importedData)) {
+                    throw new Error("Invalid file format");
+                }
+                
+                const isValid = importedData.every(list => 
+                    list && typeof list.title === 'string' && Array.isArray(list.streams)
+                );
+                
+                if (!isValid) {
+                    throw new Error("Invalid data structure in file");
+                }
+                
+                if (window.confirm("Import will replace your current lists. Continue?")) {
+                    setLists(importedData);
+                    setHasUnsavedChanges(true);
+                    alert("Lists imported successfully!");
+                }
+            } catch (error) {
+                console.error("Error importing lists:", error);
+                alert("Error importing file. Please make sure it's a valid JSON file.");
+            }
+        };
+        
+        reader.readAsText(file);
+        event.target.value = '';
+    };
+
+    const triggerFileInput = () => {
+        fileInputRef.current?.click();
+    };
+
+    // Reset to empty lists
+    const handleReset = () => {
+        if (window.confirm("Are you sure you want to reset all lists? This cannot be undone.")) {
+            setLists([]);
+            setHasUnsavedChanges(true);
+        }
+    };
+//add new list
+  const addList = () => {
+    if (newListTitle.trim()) {
+      setLists([
+        ...lists,
+        { title: newListTitle.trim(), streams: [], editing: false },
+      ]);
+          setNewListTitle("");
+          setHasUnsavedChanges(true);
+    }
+  };
+
+//delete stream
+  const deleteList = (index) => {
+    setLists(lists.filter((_, i) => i !== index));
+    setHasUnsavedChanges(true);
+  };
+
+//rename list
+  const renameList = (index, newTitle) => {
+    const updated = [...lists];
+    updated[index].title = newTitle;
+    setLists(updated);
+    setHasUnsavedChanges(true);
+  };
+
+//add stream to a list
+  const addStream = (listIndex, newStream) => {
+    if (!newStream.trim()) return;
+    const updated = [...lists];
+    updated[listIndex].streams.push(newStream.trim());
+    setLists(updated);
+    setHasUnsavedChanges(true);
+  };
+
+//edit stream
+  const editStream = (listIndex, streamIndex, newText) => {
+    const updated = [...lists];
+    updated[listIndex].streams[streamIndex] = newText.trim();
+    setLists(updated);
+    setHasUnsavedChanges(true);
+  };
+
+//delete stream from list
+  const deleteStream = (listIndex, streamIndex) => {
+    const updated = [...lists];
+    updated[listIndex].streams = updated[listIndex].streams.filter(
+      (_, i) => i !== streamIndex
+    );
+    setLists(updated);
+    setHasUnsavedChanges(true);
+  };  
+
+  return (
+    <div className="stream-list">
+      <div className="save-controls">
+      <h2>My Stream list</h2>
+      <button
+          className={`save-button ${hasUnsavedChanges ? 'unsaved' : 'saved'}`}
+          onClick={handleManualSave}
+          disabled={!hasUnsavedChanges}
+        >
+          {hasUnsavedChanges ? 'Save Changes' : 'Saved'}
+        </button>
+                {hasUnsavedChanges && <span className="unsaved-indicator">Unsaved changes</span>}
+            </div>
+      <div className="utility-controls">
+        <button className="export-button" onClick={handleExport}>
+        Export Lists
+        </button>
+
+        <button className="import-button" onClick={triggerFileInput}>
+        Import Lists
+        </button>
+        <input
+          type="file"
+          accept="application/json"
+          ref={fileInputRef}
+          style={{ display: 'none' }}
+          onChange={handleImport}
+        />
+
+        <button className="reset-button" onClick={handleReset}>
+        Reset All Lists
+        </button>
+      </div>
+            <div className="add-form">
+                <input
+                    type="text"
+                    className="add-input"
+                    placeholder="Add title..."
+                    value={newListTitle}
+                    onChange={(e) => setNewListTitle(e.target.value)}
+                />
+                <button className="add-button" onClick={addList}>
+                    Add List
+                </button>
+            </div>
+
+            {lists.length === 0 && (
+                <p>No lists yet. Add one above to get started!</p>
+            )}
+
+            {lists.map((list, listIndex) => (
+                <div key={listIndex} className="list-container">
+                    <div className="list-header">
+                        <input
+                            type="text"
+                            value={list.title}
+                            onChange={(e) => renameList(listIndex, e.target.value)}
+                        />
+                        <button onClick={() => deleteList(listIndex)}>Delete List</button>
+                    </div>
+
+                    <StreamAdder
+                        onAdd={(stream) => addStream(listIndex, stream)}
+                    />
+
+                    <ul className="stream-items">
+                        {list.streams.length === 0 && (
+                            <li>No streams yet. Add one above!</li>
+                        )}
+                        {list.streams.map((stream, streamIndex) => (
+                            <StreamItem
+                                key={streamIndex}
+                                text={stream}
+                                onSave={(newText) =>
+                                    editStream(listIndex, streamIndex, newText)
+                                }
+                                onDelete={() => deleteStream(listIndex, streamIndex)}
+                            />
+                        ))}
+                    </ul>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+//adding new stream
+function StreamAdder({ onAdd }) {
+  const [text, setText] = useState("");
+
+  const handleAdd = () => {
+    if (text.trim()) {
+      onAdd(text);
+      setText("");
     }
   };
 
   const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      addStream();
+    if (e.key === "Enter") handleAdd();
+  };
+
+  return (
+    <div className="add-form">
+      <input
+        type="text"
+        className="add-input"
+        placeholder="Add a stream..."
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={handleKeyPress}
+      />
+      <button className="add-button" onClick={handleAdd}>
+        Add Stream
+      </button>
+    </div>
+  );
+}
+//stream edit-delete
+function StreamItem({ text, onSave, onDelete }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(text);
+
+  const handleSave = () => {
+    if (editText.trim()) {
+      onSave(editText);
+      setIsEditing(false);
     }
   };
 
   return (
-    <div className="stream-list">
-      <h2>My Stream list</h2>
-      <div className="add-form">
-        <input
-          type="text"
-          className="add-input"
-          placeholder="Add title..."
-          value={newStream}
-          onChange={(e) => setNewStream(e.target.value)}
-          onKeyPress={handleKeyPress}
+    <li className="stream-item">
+      {isEditing ? (
+        <>
+          <input
+            type="text"
+            value={editText}
+            onChange={(e) => setEditText(e.target.value)}
           />
-          <button className="add-button" onClick={addStream}>
-            Add Stream
+          <div className="button-group">
+          <button className="edit-button" onClick={handleSave}>
+            Save
+            </button>
+            </div>
+        </>
+      ) : (
+        <>
+          <span>{text}</span>
+          <div className="button-group">
+          <button className="edit-button" onClick={() => setIsEditing(true)}>
+            Edit
+            </button>
+          <button onClick={onDelete}>
+            Delete
           </button>
-      </div>
-
-      <ul className="stream-items">
-        {streams.map((stream, index) => (
-          <li key={index} className="stream-item">
-            {stream}
-          </li>
-        ))}
-        {streams.length === 0 && (
-          <li className="stream-item">No streams added yet. Start by adding one above!</li>
-        )}
-      </ul>
-    </div>
+          </div>
+        </>
+      )}
+    </li>
   );
 }
 
-// Navigation
+//navigation
 function Navigation() {
   const location = useLocation();
   
