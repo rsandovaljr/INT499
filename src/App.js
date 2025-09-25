@@ -1,11 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Routes, Route, Link, useLocation } from 'react-router-dom';
+import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 
-//placeholder
-function MoviesPage() {
+//placeholders
+function MoviesPage({ results }) {
   return (
     <div className="placeholder-page">
-      <h2 className="placeholder-text">Movies Page - Coming Soon!</h2>
+      <h2 className="page-title">Movie Search Results</h2>
+      {results.length === 0 ? (
+        <p className="placeholder-text">No results yet. Try searching!</p>
+      ) : (
+        <ul className="movie-results">
+          {results.map((movie) => (
+            <li key={movie.id} className="movie-card">
+              <h3>{movie.title}</h3>
+              <p><strong>Release Date:</strong> {movie.release_date || "N/A"}</p>
+              <p><strong>Rating:</strong> {movie.vote_average || "N/A"}</p>
+              <p>{movie.overview || "No description available."}</p>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -65,7 +79,7 @@ function StreamList() {
         }
     };
 
-    // Export lists to JSON file
+//export lists to JSON file
     const handleExport = () => {
         try {
             const dataStr = JSON.stringify(lists, null, 2);
@@ -87,7 +101,7 @@ function StreamList() {
         }
     };
 
-    // Import lists from JSON file
+//import lists from JSON file
     const handleImport = (event) => {
         const file = event.target.files[0];
         if (!file) return;
@@ -128,7 +142,7 @@ function StreamList() {
         fileInputRef.current?.click();
     };
 
-    // Reset to empty lists
+//reset to empty lists
     const handleReset = () => {
         if (window.confirm("Are you sure you want to reset all lists? This cannot be undone.")) {
             setLists([]);
@@ -349,10 +363,30 @@ function StreamItem({ text, onSave, onDelete }) {
   );
 }
 
-//navigation
-function Navigation() {
+// navigation with search bar
+function Navigation({ onSearch }) {
   const location = useLocation();
-  
+  const [query, setQuery] = useState("");
+  const navigate = useNavigate();
+
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (!query.trim()) return;
+
+    try {
+      const response = await fetch(
+        `https://api.themoviedb.org/3/search/movie?api_key=cfb7b668550b872b201af0fa47854ca9&query=${encodeURIComponent(
+          query
+        )}`
+      );
+      const data = await response.json();
+      onSearch(data.results || []);
+      navigate("/movies"); // go to Movies Page
+    } catch (error) {
+      console.error("Error fetching movies:", error);
+    }
+  };
+
   return (
     <nav className="navbar">
       <ul className="nav-list">
@@ -389,19 +423,32 @@ function Navigation() {
           </Link>
         </li>
       </ul>
+
+      <form className="search-form" onSubmit={handleSearch}>
+        <input
+          type="text"
+          className="search-input"
+          placeholder="Search movies..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <button type="submit" className="search-button">Search</button>
+      </form>
     </nav>
   );
 }
 
-// Main App
+// main App
 function App() {
+  const [searchResults, setSearchResults] = useState([]);
+
   return (
     <div className="app">
-      <Navigation />
+      <Navigation onSearch={setSearchResults} />
       <main className="main-content">
         <Routes>
           <Route path="/" element={<StreamList />} />
-          <Route path="/movies" element={<MoviesPage />} />
+          <Route path="/movies" element={<MoviesPage results={searchResults} />} />
           <Route path="/cart" element={<CartPage />} />
           <Route path="/about" element={<AboutPage />} />
         </Routes>
